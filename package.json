@@ -1,6 +1,6 @@
 {
   "name": "gpio-switcher",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,9 @@
     "raspupgrade": "ssh root@10.42.0.149 -C 'rm -rf /root/gpio-switcher' && ssh root@10.42.0.149 -C 'sync' && scp -r ./ root@10.42.0.149:/root/gpio-switcher  && ssh root@10.42.0.149 -C 'sync'"
   },
   "bin": {
-    "out17": "bin/out17.js"
+    "out17no": "bin/out17no.js",
+    "out17nc": "bin/out17nc.js"
+
   },
   "repository": {
     "type": "git",
