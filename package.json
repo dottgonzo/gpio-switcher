@@ -1,0 +1,27 @@
+{
+  "name": "gpio-switcher",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "raspupgrade": "ssh root@10.42.0.149 -C 'rm -rf /root/gpio-switcher' && ssh root@10.42.0.149 -C 'sync' && scp -r ./ root@10.42.0.149:/root/gpio-switcher  && ssh root@10.42.0.149 -C 'sync'"
+  },
+  "bin": {
+    "out17": "bin/out17.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dottgonzo/machio.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dottgonzo/machio/issues"
+  },
+  "dependencies": {
+    "json-add": "0.0.3",
+    "promise": "^7.0.4",
+    "promised-exec": "^1.0.1"
+  }
+}
