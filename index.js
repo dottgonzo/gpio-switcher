@@ -1,6 +1,7 @@
 var exec=require('promised-exec');
 var Promise=require('promise');
 var merge=require('json-add');
+var pathExists=require('path-exists');
 
 function pininfo(pins,pin){
   for(var p=0;p<pins.length;p++){
@@ -24,9 +25,9 @@ function valtobool(val){
 }
 function normalize(normal,value){
   if (normal){
-    return value
-  }else {
     return !value
+  }else {
+    return value
 
   }
 }
@@ -84,9 +85,10 @@ function switcher(p,bool){
 function get(pin){
   return new Promise(function(resolve, reject) {
     exec('cat /sys/class/gpio/gpio'+pin+'/value').then(function(val){
-
-      resolve(val)
+console.log('val='+val)
+      resolve(parseInt(val))
     }).catch(function(err){
+      console.log(err)
       reject(err)
     })
 
@@ -109,6 +111,18 @@ function getvalue(p){
 
 
   })
+}
+
+
+function jsonfromval(pin,val,normal){
+
+  return {pin:pin,value:val,normal:normal,status:normalize(valtobool(val),normal)}
+
+}
+function jsonfromstatus(bool,normal){
+
+  return {pin:pin,value:booltoval(normalize(bool,normal)),normal:normal,status:bool}
+
 }
 
 function putvalue(value,pin){
@@ -168,6 +182,25 @@ function switchoff(pin,NC){
 
 }
 
+
+function dbpin(pins,pin){
+  var noexist=true
+  for(var p=0;p<pins.length;p++){
+    if(pins[p]==pin.pin){
+      noexist=false;
+      pins[p]=pin;
+    }
+
+  }
+  if(noexist){
+    console.log('add')
+    pins.push(pin)
+  }
+  console.log('update')
+
+  return pins
+}
+
 function switchon(pin,NC){
   return new Promise(function(resolve, reject) {
     get(pin).then(function(val){
@@ -215,35 +248,52 @@ function GPIOsw(conf){
 }
 
 GPIOsw.prototype.set = function (conf) {
-  console.log('set')
-  var config={
-    group:'gpio',
-    normal:true
-  }
-  merge(config,conf)
-  config.value=0
-  config.status=normalize(config.normal,false)
 
+  var pins=this.pins
 
+  return new Promise(function(resolve, reject) {
 
-  if(!pininfo(this.pins,config.pin)){
+    console.log('set')
+    var config={
+      group:'gpio',
+      normal:true
+    }
+    merge(config,conf)
 
 
 
     if (config.pin&&config.direction){
 
-      this.pins.push(config)
 
-      console.log('befprom')
+      if(pathExists.sync('/sys/class/gpio/gpio'+config.pin+'/direction')){
 
-      return new Promise(function(resolve, reject) {
-        console.log('echo '+config.pin+' > /sys/class/gpio/export')
+
+
+
+        get(config.pin).then(function(val){
+
+          var p=jsonfromval(config.pin,val,config.normal)
+
+          pins=dbpin(pins,p)
+
+          resolve(p)
+
+
+        }).catch(function(err){
+          console.log(err)
+          console.log('err')
+
+          reject(err)
+        })
+
+      }else {
 
         exec('echo '+config.pin+' > /sys/class/gpio/export').then(function(){
           console.log('exec0ok')
           exec('echo "'+config.direction+'" > /sys/class/gpio/gpio'+config.pin+'/direction').then(function(){
-
-            resolve(true)
+            var p=jsonfromval(config.pin,0,config.normal)
+            pins=dbpin(pins,p)
+            resolve(p)
 
 
           }).catch(function(err){
@@ -252,32 +302,19 @@ GPIOsw.prototype.set = function (conf) {
             reject(err)
           })
         }).catch(function(err){
-          console.log('just activated')
-
-
-          putvalue(1,config.pin).then(function(val){
-            resolve(true)
-          }).catch(function(err){
-            reject(err)
-          })
-
+          reject(err)
+          console.log(err)
         })
-      })
-
+      }
     } else{
-      return new Promise(function(resolve, reject) {
+
 
         reject('invalid params')
-      })
+
     }
-  } else{
-    return new Promise(function(resolve, reject) {
-
-      resolve('exists')
-    })
-  }
 
 
+  })
 }
 
 GPIOsw.prototype.unset = function (pin) {

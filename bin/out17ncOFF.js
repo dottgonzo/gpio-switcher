@@ -2,7 +2,7 @@ var GPIOsw=require('../index');
 var test={
   pin:17,
   direction:'out',
-  normal:false,
+  normal:true,
   group:'gpio'
 }
 console.log(test)

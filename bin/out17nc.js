@@ -5,7 +5,7 @@ console.log(G.pins)
 G.set({
   pin:17,
   direction:'out',
-  normal:false,
+  normal:true,
   group:'gpio'
 }).then(function(a){
   console.log('pass')

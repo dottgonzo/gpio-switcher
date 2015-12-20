@@ -10,7 +10,6 @@
   "bin": {
     "out17no": "bin/out17no.js",
     "out17nc": "bin/out17nc.js"
-
   },
   "repository": {
     "type": "git",
@@ -23,6 +22,7 @@
   },
   "dependencies": {
     "json-add": "0.0.3",
+    "path-exists": "^2.1.0",
     "promise": "^7.0.4",
     "promised-exec": "^1.0.1"
   }
