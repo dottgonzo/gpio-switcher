@@ -1,6 +1,7 @@
 var exec=require('promised-exec');
 var Promise=require('promise');
 var merge=require('json-add');
+var async=require('async');
 var pathExists=require('path-exists');
 
 function pininfo(pins,pin){
@@ -214,8 +215,12 @@ function GPIOsw(conf){
 
 }
 
-GPIOsw.prototype.set = function (conf) {
-  var pins=this.pins
+
+function set(pins,conf){
+
+  console.log(conf)
+
+
   return new Promise(function(resolve, reject) {
     var config={
       group:'gpio',
@@ -223,36 +228,64 @@ GPIOsw.prototype.set = function (conf) {
     }
     merge(config,conf)
     if (config.pin&&config.direction){
-      if(pathExists.sync('/sys/class/gpio/gpio'+config.pin+'/direction')){
-        get(config.pin).then(function(val){
-          var p=jsonfromval(config.pin,val,config.normal)
-          pins=dbpin(pins,p)
-          resolve(p)
-        }).catch(function(err){
-          console.log(err)
-          reject(err)
-        })
 
-      }else {
+      if(pininfo(pins,config.pin)){
 
-        exec('echo '+config.pin+' > /sys/class/gpio/export').then(function(){
-          console.log('exec0ok')
-          exec('echo "'+config.direction+'" > /sys/class/gpio/gpio'+config.pin+'/direction').then(function(){
-            var p=jsonfromval(config.pin,0,config.normal)
-            pins=dbpin(pins,p)
+
+        resolve(pininfo(pins,config.pin))
+
+      } else{
+
+
+
+        if(pathExists.sync('/sys/class/gpio/gpio'+config.pin+'/direction')){
+          get(config.pin).then(function(val){
+            var p=jsonfromval(config.pin,val,config.normal)
             resolve(p)
           }).catch(function(err){
+            console.log(err)
             reject(err)
           })
-        }).catch(function(err){
-          reject(err)
-          console.log(err)
-        })
+
+        }else {
+
+          exec('echo '+config.pin+' > /sys/class/gpio/export').then(function(){
+            console.log('exec0ok')
+            exec('echo "'+config.direction+'" > /sys/class/gpio/gpio'+config.pin+'/direction').then(function(){
+              var p=jsonfromval(config.pin,0,config.normal)
+              resolve(p)
+            }).catch(function(err){
+              reject(err)
+            })
+          }).catch(function(err){
+            reject(err)
+            console.log(err)
+          })
+        }
+
+
       }
+
     } else{
       reject('invalid params')
     }
+
   })
+}
+
+
+GPIOsw.prototype.set = function (conf) {
+  var pins=this.pins
+    return new Promise(function(resolve, reject) {
+
+  set(pins,conf).then(function(p){
+    pins=dbpin(pins,p)
+    resolve(p)
+  }).catch(function(err){
+    reject(p)
+
+  })
+})
 }
 
 GPIOsw.prototype.unset = function (pin) {
@@ -281,7 +314,7 @@ GPIOsw.prototype.unset = function (pin) {
   }
 }
 GPIOsw.prototype.get = function (pin) {
-normal=false
+  normal=false
   if(pininfo(this.pins,pin)){
     normal=true
     NC=pininfo(this.pins,pin).normal
@@ -305,6 +338,40 @@ normal=false
   })
 
 };
+
+
+
+
+GPIOsw.prototype.load = function (configs) {
+  var pins=this.pins;
+
+
+
+  return new Promise(function(resolve, reject) {
+
+async.forEach(configs,function(conf,cb){
+  set(pins,conf).then(function(p){
+    console.log('set'+p.pin)
+    pins=dbpin(pins,p)
+    cb()
+  }).catch(function(err){
+    cb(err)
+  })
+}, function (err) {
+  if (err) {
+  reject(err)
+  } else{
+    resolve(pins)
+  };
+  // configs is now a map of JSON data
+})
+
+
+})
+
+}
+
+
 
 GPIOsw.prototype.on = function (pin,NC) {
 
@@ -400,7 +467,7 @@ GPIOsw.prototype.turn = function (pin,bool,NC) {
 
 GPIOsw.prototype.switch = function (pin) {
 
-var normal=false
+  var normal=false
   if(pininfo(this.pins,pin)){
     normal=true
     NC=pininfo(this.pins,pin).normal
@@ -408,12 +475,12 @@ var normal=false
 
   return new Promise(function(resolve, reject) {
     switcher(pin).then(function(v){
-if(normal){
-  resolve(jsonfromval(pin,v,NC))
+      if(normal){
+        resolve(jsonfromval(pin,v,NC))
 
-}else{
-  resolve({value:v,pin:pin})
-}
+      }else{
+        resolve({value:v,pin:pin})
+      }
 
     }).catch(function(err){
       reject(err)

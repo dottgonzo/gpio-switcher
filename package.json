@@ -21,6 +21,7 @@
     "url": "https://github.com/dottgonzo/gpio-switcher/issues"
   },
   "dependencies": {
+    "async": "^1.5.0",
     "json-add": "0.0.3",
     "path-exists": "^2.1.0",
     "promise": "^7.0.4",

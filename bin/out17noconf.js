@@ -2,18 +2,26 @@ var GPIOsw=require('../index');
 
 var G=new GPIOsw()
 console.log(G.pins)
-G.set({
+G.load([{
   pin:17,
   direction:'out',
   normal:false,
   group:'gpio'
-}).then(function(a){
-  console.log('pass')
-  console.log(G.pins)
+}])
 
+  setTimeout(function(){
+    console.log(G.pins)
 
-}).catch(function(err){
-  throw Error(err)
+  G.off(17)
+  setTimeout(function(){
+    console.log(G.pins)
 
+  G.on(17)
+  setTimeout(function(){
+    console.log(G.pins)
 
-})
+    G.off(17)
+
+  },5000)
+  },5000)
+},5000)
