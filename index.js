@@ -50,42 +50,25 @@ function statusswitcher(p,bool){
 
   });
 }
-function switcher(p,bool){
-  console.log('put '+bool)
-  console.log('expect '+normalize(p.normal,bool))
+function switcher(pin){
+
 
   return new Promise(function(resolve, reject) {
-    var value=booltoval(bool)
-    get(p.pin).then(function(val){
-      if(valtobool(val)!=bool){
-        putvalue(booltoval(bool),pin).then(function(){
-          console.log('done')
-
-          resolve({value:value,normal:p.normal,status:normalize(p.normal,bool)})
-
-        }).catch(function(err){
-          reject(err)
-        })
-
-      } else {
-        console.log('okk')
-        resolve(true)
-
-      }
-
+    get(pin).then(function(val){
+      putvalue(booltoval(!valtobool(val)),pin).then(function(){
+        resolve(booltoval(!valtobool(val)))
+      }).catch(function(err){
+        reject(err)
+      })
     }).catch(function(err){
       reject(err)
     })
-
-
-
-
   });
 }
 function get(pin){
   return new Promise(function(resolve, reject) {
     exec('cat /sys/class/gpio/gpio'+pin+'/value').then(function(val){
-console.log('val='+val)
+      console.log('val='+val)
       resolve(parseInt(val))
     }).catch(function(err){
       console.log(err)
@@ -120,7 +103,7 @@ function jsonfromval(pin,val,normal){
 
 }
 function jsonfromstatus(bool,normal){
-
+  console.log('normal'+booltoval(normalize(bool,normal)))
   return {pin:pin,value:booltoval(normalize(bool,normal)),normal:normal,status:bool}
 
 }
@@ -145,13 +128,13 @@ function switchoff(pin,NC){
     get(pin).then(function(val){
       if(val==1){
         if(!NC){
-          putvalue(0,pin).then(function(val){
-            resolve(true)
+          putvalue(0,pin).then(function(){
+            resolve(0)
           }).catch(function(err){
             reject(err)
           })
         } else{
-          resolve(true)
+          resolve(1)
 
         }
 
@@ -160,13 +143,13 @@ function switchoff(pin,NC){
       } else {
 
         if(NC){
-          putvalue(1,pin).then(function(val){
-            resolve(true)
+          putvalue(1,pin).then(function(){
+            resolve(1)
           }).catch(function(err){
             reject(err)
           })
         } else{
-          resolve(true)
+          resolve(0)
 
         }
 
@@ -186,18 +169,14 @@ function switchoff(pin,NC){
 function dbpin(pins,pin){
   var noexist=true
   for(var p=0;p<pins.length;p++){
-    if(pins[p]==pin.pin){
+    if(pins[p].pin==pin.pin){
       noexist=false;
       pins[p]=pin;
     }
-
   }
   if(noexist){
-    console.log('add')
     pins.push(pin)
   }
-  console.log('update')
-
   return pins
 }
 
@@ -205,42 +184,30 @@ function switchon(pin,NC){
   return new Promise(function(resolve, reject) {
     get(pin).then(function(val){
       if(val==0){
-        if(NC){
-          putvalue(1,pin).then(function(val){
-            resolve(true)
+        if(!NC){
+          putvalue(1,pin).then(function(){
+            resolve(1)
           }).catch(function(err){
             reject(err)
           })
         } else{
-          resolve(true)
-
+          resolve(0)
         }
-
-
-
       } else {
-
         if(NC){
-          putvalue(1,pin).then(function(val){
-            resolve(true)
+          putvalue(0,pin).then(function(){
+            resolve(0)
           }).catch(function(err){
             reject(err)
           })
         } else{
-          resolve(true)
-
+          resolve(1)
         }
-
-
-
       }
     }).catch(function(err){
       reject(err)
     })
-
-
   })
-
 }
 function GPIOsw(conf){
   this.pins=[]
@@ -248,41 +215,21 @@ function GPIOsw(conf){
 }
 
 GPIOsw.prototype.set = function (conf) {
-
   var pins=this.pins
-
   return new Promise(function(resolve, reject) {
-
-    console.log('set')
     var config={
       group:'gpio',
       normal:true
     }
     merge(config,conf)
-
-
-
     if (config.pin&&config.direction){
-
-
       if(pathExists.sync('/sys/class/gpio/gpio'+config.pin+'/direction')){
-
-
-
-
         get(config.pin).then(function(val){
-
           var p=jsonfromval(config.pin,val,config.normal)
-
           pins=dbpin(pins,p)
-
           resolve(p)
-
-
         }).catch(function(err){
           console.log(err)
-          console.log('err')
-
           reject(err)
         })
 
@@ -294,11 +241,7 @@ GPIOsw.prototype.set = function (conf) {
             var p=jsonfromval(config.pin,0,config.normal)
             pins=dbpin(pins,p)
             resolve(p)
-
-
           }).catch(function(err){
-            console.log(err)
-
             reject(err)
           })
         }).catch(function(err){
@@ -307,13 +250,8 @@ GPIOsw.prototype.set = function (conf) {
         })
       }
     } else{
-
-
-        reject('invalid params')
-
+      reject('invalid params')
     }
-
-
   })
 }
 
@@ -343,13 +281,23 @@ GPIOsw.prototype.unset = function (pin) {
   }
 }
 GPIOsw.prototype.get = function (pin) {
-
-  var p=pininfo(this.pins,pin);
-
+normal=false
+  if(pininfo(this.pins,pin)){
+    normal=true
+    NC=pininfo(this.pins,pin).normal
+  }
 
   return new Promise(function(resolve, reject) {
-    getvalue(p).then(function(answer){
-      resolve(answer)
+    get(pin).then(function(v){
+
+      if(normal){
+        resolve(jsonfromval(pin,v,NC))
+
+      }else{
+        resolve({value:v,pin:pin})
+      }
+
+
     }).catch(function(err){
       reject(err)
     })
@@ -360,28 +308,24 @@ GPIOsw.prototype.get = function (pin) {
 
 GPIOsw.prototype.on = function (pin,NC) {
 
-
-  var thep=true;
   if(pininfo(this.pins,pin)){
-
-    for(var p=0;p<this.pins.length;p++){
-      if(this.pins[p].pin==pin){
-        this.pins[p].status=true
-        this.pins[p].value=normalize(this.pins[p].normal,this.pins[p].status)
-      }
-    }
-
-    thep= this.pins[p]
-
-
-
+    NC=pininfo(this.pins,pin).normal
   }
+
+  var pins=this.pins;
+
   return new Promise(function(resolve, reject) {
 
 
-    switchon(pin,NC).then(function(){
-      resolve(thep)
+    switchon(pin,NC).then(function(v){
+      var p=jsonfromval(pin,v,NC)
+
+      pins=dbpin(pins,p)
+
+      resolve(p)
+
     }).catch(function(err){
+      console.log(err)
       reject(err)
     })
 
@@ -390,109 +334,87 @@ GPIOsw.prototype.on = function (pin,NC) {
 
 }
 GPIOsw.prototype.off = function (pin,NC) {
-  var thep=true;
 
   if(pininfo(this.pins,pin)){
-
-    for(var p=0;p<this.pins.length;p++){
-      if(this.pins[p].pin==pin){
-        this.pins[p].status=false
-        this.pins[p].value=normalize(this.pins[p].normal,this.pins[p].status)
-      }
-    }
-    thep= this.pins[p]
-
+    NC=pininfo(this.pins,pin).normal
   }
+
+  var pins=this.pins;
 
   return new Promise(function(resolve, reject) {
 
 
-    switchoff(pin,NC).then(function(){
-      resolve(thep)
+    switchoff(pin,NC).then(function(v){
+      var p=jsonfromval(pin,v,NC)
+
+      pins=dbpin(pins,p)
+      resolve(p)
+
     }).catch(function(err){
       reject(err)
     })
-
   })
 
 
 
 
 }
-GPIOsw.prototype.turn = function (pin,bool) {
-  var thep=true;
+GPIOsw.prototype.turn = function (pin,bool,NC) {
 
-
-
-
-  if(bool&&bool!='off'){
-    if(pininfo(this.pins,pin)){
-
-      for(var p=0;p<this.pins.length;p++){
-        if(this.pins[p].pin==pin){
-          this.pins[p].status=false
-          this.pins[p].value=normalize(this.pins[p].normal,this.pins[p].status)
-        }
-      }
-      thep= this.pins[p]
-
-    }
-    return new Promise(function(resolve, reject) {
-
-      switchoff(pin,!thep.normal).then(function(){
-        resolve(thep)
-      }).catch(function(err){
-        reject(err)
-      })
-    })
-  } else {
-    if(pininfo(this.pins,pin)){
-
-      for(var p=0;p<this.pins.length;p++){
-        if(this.pins[p].pin==pin){
-          this.pins[p].status=true
-          this.pins[p].value=normalize(this.pins[p].normal,this.pins[p].status)
-        }
-      }
-
-      thep= this.pins[p]
-
-
-
-    }
-
-    return new Promise(function(resolve, reject) {
-
-
-      switchon(pin,!thep.normal).then(function(){
-        resolve(thep)
-      }).catch(function(err){
-        reject(err)
-      })
-    })
-
-
-
-
+  if(pininfo(this.pins,pin)){
+    NC=pininfo(this.pins,pin).normal
   }
+
+  var pins=this.pins;
+
+  return new Promise(function(resolve, reject) {
+
+
+
+    if(bool&&bool!='off'){
+      switchon(pin,NC).then(function(v){
+        var p=jsonfromval(pin,v,NC)
+
+        pins=dbpin(pins,p)
+        resolve(p)
+
+      }).catch(function(err){
+        reject(err)
+      })
+
+    } else {
+
+      switchoff(pin,NC).then(function(v){
+        var p=jsonfromval(pin,v,NC)
+
+        pins=dbpin(pins,p)
+        resolve(p)
+
+      }).catch(function(err){
+        reject(err)
+      })
+
+    }
+  })
 }
 
 GPIOsw.prototype.switch = function (pin) {
 
-
+var normal=false
+  if(pininfo(this.pins,pin)){
+    normal=true
+    NC=pininfo(this.pins,pin).normal
+  }
 
   return new Promise(function(resolve, reject) {
-    getvalue(p).then(function(answer){
-      console.log('status '+answer.status)
-      console.log('value '+answer.value)
-      var value=valtobool(answer.value)
+    switcher(pin).then(function(v){
+if(normal){
+  resolve(jsonfromval(pin,v,NC))
 
-      console.log('newvalue '+!valu)
-      switcher(p,!value).then(function(a){
-        resolve(a)
-      }).catch(function(err){
-        reject(err)
-      })
+}else{
+  resolve({value:v,pin:pin})
+}
+
     }).catch(function(err){
       reject(err)
     })

@@ -6,30 +6,38 @@ var test={
   label:'u',
   group:'gpio'
 }
-console.log(test)
+
 var G=new GPIOsw()
 console.log(G.pins)
 G.set(test).then(function(a){
   console.log(G.pins)
 
-  console.log('pass')
-  console.log(a)
+
   setTimeout(function(){
 
-    G.switch(17).then(function(a){
-      console.log(a)
+    G.on(17,false).then(function(){
+      console.log('on')
+      console.log(G.pins)
+
 
       setTimeout(function(){
-        G.switch(17).then(function(a){
-          console.log(a)
-          G.unset(17).then(function(a){
-            console.log(a)
-            console.log('unset')
+        G.off(17,false).then(function(){
+console.log('off')
+console.log(G.pins)
+
+          setTimeout(function(){
+
+          G.on(17,false).then(function(){
+
+
+            console.log('on')
             console.log(G.pins)
 
           }).catch(function(err){
             console.log(err)
           })
+        },5000)
+
         }).catch(function(err){
           console.log(err)
         })

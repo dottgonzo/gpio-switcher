@@ -1,33 +1,43 @@
 var GPIOsw=require('../index');
-
-var G=new GPIOsw()
-console.log(G.pins)
-G.set({
+var test={
   pin:17,
   direction:'out',
   normal:true,
+  label:'u',
   group:'gpio'
-}).then(function(a){
-  console.log('pass')
+}
+
+var G=new GPIOsw()
+console.log(G.pins)
+G.set(test).then(function(a){
   console.log(G.pins)
 
-  console.log(a)
+
   setTimeout(function(){
 
-    G.switch(17).then(function(a){
-      console.log(a)
+    G.on(17,true).then(function(a){
+      console.log('on')
+      console.log(G.pins)
+
 
       setTimeout(function(){
-        G.switch(17).then(function(a){
-          console.log(a)
-          G.unset(17).then(function(a){
-            console.log(a)
-            console.log('unset')
+        G.off(17,true).then(function(){
+console.log('off')
+console.log(G.pins)
+
+          setTimeout(function(){
+
+          G.on(17,true).then(function(){
+
+
+            console.log('on')
             console.log(G.pins)
 
           }).catch(function(err){
             console.log(err)
           })
+        },5000)
+
         }).catch(function(err){
           console.log(err)
         })
